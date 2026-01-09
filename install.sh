@@ -4,7 +4,7 @@ set -e
 # CCG Skills Installer
 # Multi-model development workflow for Claude Code
 
-REPO_URL="https://raw.githubusercontent.com/YOUR_USERNAME/ccg-skills/main"
+REPO_URL="https://raw.githubusercontent.com/masaakikubota/ccg-skills/main"
 CLAUDE_DIR="$HOME/.claude"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 MCP_DIR="$CLAUDE_DIR/mcp-servers/ccg-mcp-server"

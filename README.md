@@ -7,13 +7,13 @@ Multi-model development workflow for Claude Code using Codex and Gemini.
 ### Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/ccg-skills/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/masaakikubota/ccg-skills/main/install.sh | bash
 ```
 
 ### Manual Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/ccg-skills.git
+git clone https://github.com/masaakikubota/ccg-skills.git
 cd ccg-skills
 ./install.sh
 ```
@@ -149,7 +149,7 @@ If automatic configuration fails, add to `~/.claude/settings.json`:
 ## Uninstall
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/ccg-skills/main/uninstall.sh | bash
+curl -fsSL https://raw.githubusercontent.com/masaakikubota/ccg-skills/main/uninstall.sh | bash
 ```
 
 Or manually:
