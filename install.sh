@@ -28,14 +28,14 @@ else
 fi
 
 # Create directories
-echo "[1/5] Creating directories..."
+echo "[1/6] Creating directories..."
 mkdir -p "$SKILLS_DIR"
 mkdir -p "$MCP_DIR"
 mkdir -p "$PROMPTS_DIR"
 mkdir -p "$BIN_DIR"
 
 # Install Skills
-echo "[2/5] Installing skills..."
+echo "[2/6] Installing skills..."
 SKILLS=(
     "ccg-routing"
     "ccg-workflow"
@@ -61,7 +61,7 @@ fi
 echo "    Installed ${#SKILLS[@]} skills"
 
 # Install MCP Server
-echo "[3/5] Installing MCP server..."
+echo "[3/6] Installing MCP server..."
 if [ "$LOCAL_INSTALL" = true ]; then
     cp -r ./mcp-server/* "$MCP_DIR/"
 else
@@ -72,11 +72,22 @@ fi
 # Install dependencies for MCP server
 cd "$MCP_DIR"
 if [ -f "package.json" ]; then
-    npm install --silent 2>/dev/null || echo "    (npm install skipped)"
+    echo "    Installing npm dependencies..."
+    npm install --silent 2>/dev/null || npm install 2>&1 | tail -3
 fi
 
-# Install Prompts (optional)
-echo "[4/5] Installing prompts..."
+# Install codeagent-wrapper binary
+echo "[4/6] Installing codeagent-wrapper..."
+if [ "$LOCAL_INSTALL" = true ]; then
+    cp ./bin/codeagent-wrapper "$BIN_DIR/"
+else
+    curl -fsSL "$REPO_URL/bin/codeagent-wrapper" -o "$BIN_DIR/codeagent-wrapper"
+fi
+chmod +x "$BIN_DIR/codeagent-wrapper"
+echo "    Installed codeagent-wrapper"
+
+# Install Prompts
+echo "[5/6] Installing prompts..."
 if [ "$LOCAL_INSTALL" = true ] && [ -d "./prompts" ]; then
     cp -r ./prompts/* "$PROMPTS_DIR/" 2>/dev/null || true
 else
@@ -87,9 +98,10 @@ else
         done
     done
 fi
+echo "    Installed prompts"
 
 # Update settings.json
-echo "[5/5] Updating settings.json..."
+echo "[6/6] Updating settings.json..."
 
 # Create settings.json if not exists
 if [ ! -f "$SETTINGS_FILE" ]; then
@@ -100,6 +112,9 @@ fi
 if command -v jq &> /dev/null; then
     # Use jq for JSON manipulation
     TMP_FILE=$(mktemp)
+
+    # Ensure mcpServers and skills objects exist
+    jq '. + {mcpServers: (.mcpServers // {}), skills: (.skills // {})}' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
 
     # Add MCP server
     jq '.mcpServers.ccg = {
@@ -143,20 +158,47 @@ if command -v jq &> /dev/null; then
         "description": "Backend development with Codex"
     }' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
 
+    echo "    Settings updated successfully"
 else
-    echo "    Warning: jq not found. Please manually add the following to $SETTINGS_FILE"
+    echo "    Warning: jq not found. Please install jq or manually configure settings.json"
+    echo ""
+    echo "    To install jq:"
+    echo "      macOS:  brew install jq"
+    echo "      Ubuntu: sudo apt install jq"
     echo ""
     echo "    See README.md for manual configuration instructions."
 fi
 
-# Check for codeagent-wrapper
+# Verify installation
 echo ""
-if [ -f "$BIN_DIR/codeagent-wrapper" ]; then
-    echo "[OK] codeagent-wrapper found"
+echo "Verifying installation..."
+ERRORS=0
+
+if [ ! -f "$BIN_DIR/codeagent-wrapper" ]; then
+    echo "  [ERROR] codeagent-wrapper not found"
+    ERRORS=$((ERRORS + 1))
 else
-    echo "[!] codeagent-wrapper not found"
-    echo "    The MCP server requires codeagent-wrapper to call Codex/Gemini."
-    echo "    Please install it separately or contact the repository maintainer."
+    echo "  [OK] codeagent-wrapper"
+fi
+
+if [ ! -f "$MCP_DIR/index.js" ]; then
+    echo "  [ERROR] MCP server not found"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  [OK] MCP server"
+fi
+
+if [ ! -d "$SKILLS_DIR/ccg-workflow" ]; then
+    echo "  [ERROR] Skills not found"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  [OK] Skills (${#SKILLS[@]} installed)"
+fi
+
+if [ $ERRORS -gt 0 ]; then
+    echo ""
+    echo "  Installation completed with $ERRORS error(s)"
+    exit 1
 fi
 
 echo ""
@@ -176,5 +218,5 @@ echo "  /ccg:feat      - Feature development"
 echo "  /ccg:frontend  - Frontend development (Gemini)"
 echo "  /ccg:backend   - Backend development (Codex)"
 echo ""
-echo "Restart Claude Code to use the new skills!"
+echo "IMPORTANT: Restart Claude Code to use the new skills!"
 echo ""

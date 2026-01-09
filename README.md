@@ -1,10 +1,10 @@
 # CCG Skills
 
-Multi-model development workflow for Claude Code using Codex and Gemini.
+Multi-model development workflow for Claude Code using Codex (OpenAI) and Gemini (Google).
 
 ## Installation
 
-### Quick Install
+### Quick Install (Recommended)
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/masaakikubota/ccg-skills/main/install.sh | bash
@@ -22,12 +22,20 @@ cd ccg-skills
 
 - [Claude Code](https://claude.ai/code) CLI
 - Node.js 18+
-- `jq` (optional, for automatic settings.json configuration)
+- `jq` (for automatic settings.json configuration)
 
-### codeagent-wrapper
+### Installing jq
 
-The MCP server requires `codeagent-wrapper` binary to communicate with Codex and Gemini.
-Contact the repository maintainer for access or build from source.
+```bash
+# macOS
+brew install jq
+
+# Ubuntu/Debian
+sudo apt install jq
+
+# Windows (with chocolatey)
+choco install jq
+```
 
 ## Available Commands
 
@@ -120,6 +128,25 @@ The CCG MCP server provides these tools (used automatically by skills):
 - `ask_both` - Query both models in parallel
 - `smart_route` - Auto-route based on task analysis
 
+## What Gets Installed
+
+```
+~/.claude/
+├── bin/
+│   └── codeagent-wrapper      # Binary for Codex/Gemini communication
+├── mcp-servers/
+│   └── ccg-mcp-server/        # MCP server
+│       ├── index.js
+│       └── package.json
+├── skills/
+│   └── ccg-*/                 # 11 skill definitions
+├── prompts/
+│   ├── claude/                # Claude expert prompts
+│   ├── codex/                 # Codex expert prompts
+│   └── gemini/                # Gemini expert prompts
+└── settings.json              # Updated with ccg config
+```
+
 ## Manual Configuration
 
 If automatic configuration fails, add to `~/.claude/settings.json`:
@@ -140,8 +167,39 @@ If automatic configuration fails, add to `~/.claude/settings.json`:
     "ccg:analyze": {
       "path": "~/.claude/skills/ccg-analyze/SKILL.md",
       "description": "Parallel technical analysis"
+    },
+    "ccg:review": {
+      "path": "~/.claude/skills/ccg-review/SKILL.md",
+      "description": "Multi-model code review"
+    },
+    "ccg:debug": {
+      "path": "~/.claude/skills/ccg-debug/SKILL.md",
+      "description": "Multi-model debugging"
+    },
+    "ccg:test": {
+      "path": "~/.claude/skills/ccg-test/SKILL.md",
+      "description": "Test generation"
+    },
+    "ccg:optimize": {
+      "path": "~/.claude/skills/ccg-optimize/SKILL.md",
+      "description": "Performance optimization"
+    },
+    "ccg:commit": {
+      "path": "~/.claude/skills/ccg-commit/SKILL.md",
+      "description": "Commit message generation"
+    },
+    "ccg:feat": {
+      "path": "~/.claude/skills/ccg-feat/SKILL.md",
+      "description": "Feature development"
+    },
+    "ccg:frontend": {
+      "path": "~/.claude/skills/ccg-frontend/SKILL.md",
+      "description": "Frontend development"
+    },
+    "ccg:backend": {
+      "path": "~/.claude/skills/ccg-backend/SKILL.md",
+      "description": "Backend development"
     }
-    // ... add other skills
   }
 }
 ```
@@ -158,7 +216,29 @@ Or manually:
 rm -rf ~/.claude/skills/ccg-*
 rm -rf ~/.claude/mcp-servers/ccg-mcp-server
 rm -rf ~/.claude/prompts
+rm ~/.claude/bin/codeagent-wrapper
 ```
+
+Then remove `ccg` entries from `~/.claude/settings.json`.
+
+## Troubleshooting
+
+### Skills not showing up
+
+1. Restart Claude Code after installation
+2. Check if skills are in `~/.claude/skills/`
+3. Verify `settings.json` has the skill entries
+
+### MCP server not working
+
+1. Check if `node` is available: `which node`
+2. Verify MCP server exists: `ls ~/.claude/mcp-servers/ccg-mcp-server/`
+3. Check npm dependencies: `cd ~/.claude/mcp-servers/ccg-mcp-server && npm install`
+
+### codeagent-wrapper errors
+
+1. Verify binary exists: `ls -la ~/.claude/bin/codeagent-wrapper`
+2. Check permissions: `chmod +x ~/.claude/bin/codeagent-wrapper`
 
 ## License
 
