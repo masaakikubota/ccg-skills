@@ -23,6 +23,10 @@ cd ccg-skills
 - [Claude Code](https://claude.ai/code) CLI
 - Node.js 18+
 - `jq` (for automatic settings.json configuration)
+- **For image generation (optional):**
+  - GCP Project with Vertex AI API enabled
+  - `gcloud` CLI with ADC configured
+  - `export GCP_PROJECT_ID="your-project-id"`
 
 ### Installing jq
 
@@ -51,6 +55,7 @@ choco install jq
 | `/ccg:feat` | Feature development workflow |
 | `/ccg:frontend` | Frontend development with Gemini |
 | `/ccg:backend` | Backend development with Codex |
+| `/ccg:image` | AI image generation with Nano Banana Pro |
 
 ## Usage Examples
 
@@ -109,6 +114,18 @@ Analyzes staged changes and generates Conventional Commit message.
 /ccg:backend Create REST API for user management
 ```
 
+### Image - AI Image Generation
+
+```
+/ccg:image A modern app icon for a task management app
+/ccg:image icon: Shopping cart icon --style=flat
+/ccg:image diagram: OAuth 2.0 authentication flow --type=sequence
+/ccg:image ui: Dashboard with analytics charts --platform=web
+/ccg:image edit: ./logo.png Add gradient background
+```
+
+Requires `GCP_PROJECT_ID` environment variable and Vertex AI API access.
+
 ## Model Routing
 
 | Task Type | Model | Expertise |
@@ -123,27 +140,37 @@ Analyzes staged changes and generates Conventional Commit message.
 
 The CCG MCP server provides these tools (used automatically by skills):
 
+### Code Generation Tools
 - `ask_codex` - Query Codex for backend tasks
 - `ask_gemini` - Query Gemini for frontend tasks
 - `ask_both` - Query both models in parallel
 - `smart_route` - Auto-route based on task analysis
+
+### Image Generation Tools (Nano Banana Pro)
+- `generate_image` - General image generation with various styles
+- `edit_image` - Edit existing images with text instructions
+- `generate_icon` - Create app icons and UI elements
+- `generate_diagram` - Create technical diagrams (flowchart, architecture, etc.)
+- `generate_ui_mockup` - Create UI/UX mockups for web/mobile
 
 ## What Gets Installed
 
 ```
 ~/.claude/
 ├── bin/
-│   └── codeagent-wrapper      # Binary for Codex/Gemini communication
+│   ├── codeagent-wrapper      # Binary for Codex/Gemini communication
+│   └── nanobanana-wrapper     # Shell script for image generation
 ├── mcp-servers/
-│   └── ccg-mcp-server/        # MCP server
+│   └── ccg-mcp-server/        # MCP server (includes image generation tools)
 │       ├── index.js
 │       └── package.json
 ├── skills/
-│   └── ccg-*/                 # 11 skill definitions
+│   └── ccg-*/                 # 12 skill definitions (including ccg-image)
 ├── prompts/
 │   ├── claude/                # Claude expert prompts
 │   ├── codex/                 # Codex expert prompts
 │   └── gemini/                # Gemini expert prompts
+├── nanobanana-output/         # Generated images output directory
 └── settings.json              # Updated with ccg config
 ```
 
@@ -199,6 +226,58 @@ If automatic configuration fails, add to `~/.claude/settings.json`:
     "ccg:backend": {
       "path": "~/.claude/skills/ccg-backend/SKILL.md",
       "description": "Backend development"
+    },
+    "ccg:image": {
+      "path": "~/.claude/skills/ccg-image/SKILL.md",
+      "description": "AI image generation with Nano Banana Pro"
+    }
+  }
+}
+```
+
+## Image Generation Setup
+
+To enable image generation features, configure GCP Vertex AI:
+
+### 1. Set Environment Variables
+
+```bash
+# Add to ~/.zshrc or ~/.bashrc
+export GCP_PROJECT_ID="your-gcp-project-id"
+export GCP_REGION="us-central1"  # Optional, defaults to us-central1
+```
+
+### 2. Enable Vertex AI API
+
+```bash
+gcloud services enable aiplatform.googleapis.com
+```
+
+### 3. Configure ADC Authentication
+
+```bash
+gcloud auth application-default login
+```
+
+### 4. Grant IAM Role
+
+Ensure your account has `roles/aiplatform.user` role.
+
+### Alternative: External MCP Server (Method 1)
+
+You can also use the standalone `nanobanana-mcp-server`:
+
+```json
+{
+  "mcpServers": {
+    "nanobanana": {
+      "command": "uvx",
+      "args": ["nanobanana-mcp-server@latest"],
+      "env": {
+        "NANOBANANA_AUTH_METHOD": "vertex_ai",
+        "GCP_PROJECT_ID": "${GCP_PROJECT_ID}",
+        "GCP_REGION": "us-central1"
+      }
     }
   }
 }
@@ -216,7 +295,9 @@ Or manually:
 rm -rf ~/.claude/skills/ccg-*
 rm -rf ~/.claude/mcp-servers/ccg-mcp-server
 rm -rf ~/.claude/prompts
+rm -rf ~/.claude/nanobanana-output
 rm ~/.claude/bin/codeagent-wrapper
+rm ~/.claude/bin/nanobanana-wrapper
 ```
 
 Then remove `ccg` entries from `~/.claude/settings.json`.
@@ -239,6 +320,21 @@ Then remove `ccg` entries from `~/.claude/settings.json`.
 
 1. Verify binary exists: `ls -la ~/.claude/bin/codeagent-wrapper`
 2. Check permissions: `chmod +x ~/.claude/bin/codeagent-wrapper`
+
+### Image generation not working
+
+1. Verify GCP Project ID is set: `echo $GCP_PROJECT_ID`
+2. Check ADC authentication: `gcloud auth application-default print-access-token`
+3. Verify Vertex AI API is enabled: `gcloud services list --enabled | grep aiplatform`
+4. Check nanobanana-wrapper: `ls -la ~/.claude/bin/nanobanana-wrapper`
+5. Test manually: `~/.claude/bin/nanobanana-wrapper generate "test image" modern`
+
+### Image generation errors
+
+- **"GCP_PROJECT_ID not set"**: Export the variable: `export GCP_PROJECT_ID="your-project-id"`
+- **"Failed to get access token"**: Re-authenticate: `gcloud auth application-default login`
+- **"API request failed with status 403"**: Check IAM permissions for `roles/aiplatform.user`
+- **"No image in response"**: The model may have refused the prompt. Try a different description.
 
 ## License
 

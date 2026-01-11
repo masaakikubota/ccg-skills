@@ -48,6 +48,7 @@ SKILLS=(
     "ccg-feat"
     "ccg-frontend"
     "ccg-backend"
+    "ccg-image"
 )
 
 if [ "$LOCAL_INSTALL" = true ]; then
@@ -76,15 +77,23 @@ if [ -f "package.json" ]; then
     npm install --silent 2>/dev/null || npm install 2>&1 | tail -3
 fi
 
-# Install codeagent-wrapper binary
-echo "[4/6] Installing codeagent-wrapper..."
+# Install binary wrappers
+echo "[4/6] Installing binary wrappers..."
 if [ "$LOCAL_INSTALL" = true ]; then
     cp ./bin/codeagent-wrapper "$BIN_DIR/"
+    cp ./bin/nanobanana-wrapper "$BIN_DIR/"
 else
     curl -fsSL "$REPO_URL/bin/codeagent-wrapper" -o "$BIN_DIR/codeagent-wrapper"
+    curl -fsSL "$REPO_URL/bin/nanobanana-wrapper" -o "$BIN_DIR/nanobanana-wrapper"
 fi
 chmod +x "$BIN_DIR/codeagent-wrapper"
+chmod +x "$BIN_DIR/nanobanana-wrapper"
 echo "    Installed codeagent-wrapper"
+echo "    Installed nanobanana-wrapper"
+
+# Create nanobanana output directory
+mkdir -p "$CLAUDE_DIR/nanobanana-output"
+echo "    Created nanobanana-output directory"
 
 # Install Prompts
 echo "[5/6] Installing prompts..."
@@ -156,6 +165,9 @@ if command -v jq &> /dev/null; then
     } | .skills["ccg:backend"] = {
         "path": "'"$SKILLS_DIR/ccg-backend/SKILL.md"'",
         "description": "Backend development with Codex"
+    } | .skills["ccg:image"] = {
+        "path": "'"$SKILLS_DIR/ccg-image/SKILL.md"'",
+        "description": "AI image generation with Nano Banana Pro via Vertex AI"
     }' "$SETTINGS_FILE" > "$TMP_FILE" && mv "$TMP_FILE" "$SETTINGS_FILE"
 
     echo "    Settings updated successfully"
@@ -179,6 +191,13 @@ if [ ! -f "$BIN_DIR/codeagent-wrapper" ]; then
     ERRORS=$((ERRORS + 1))
 else
     echo "  [OK] codeagent-wrapper"
+fi
+
+if [ ! -f "$BIN_DIR/nanobanana-wrapper" ]; then
+    echo "  [ERROR] nanobanana-wrapper not found"
+    ERRORS=$((ERRORS + 1))
+else
+    echo "  [OK] nanobanana-wrapper"
 fi
 
 if [ ! -f "$MCP_DIR/index.js" ]; then
@@ -217,6 +236,17 @@ echo "  /ccg:commit    - Commit message generation"
 echo "  /ccg:feat      - Feature development"
 echo "  /ccg:frontend  - Frontend development (Gemini)"
 echo "  /ccg:backend   - Backend development (Codex)"
+echo "  /ccg:image     - AI image generation (Nano Banana Pro)"
+echo ""
+echo "Image generation tools (MCP):"
+echo "  generate_image     - General image generation"
+echo "  edit_image         - Edit existing images"
+echo "  generate_icon      - Create icons and UI elements"
+echo "  generate_diagram   - Create technical diagrams"
+echo "  generate_ui_mockup - Create UI/UX mockups"
+echo ""
+echo "NOTE: For image generation, set GCP_PROJECT_ID environment variable:"
+echo "  export GCP_PROJECT_ID='your-project-id'"
 echo ""
 echo "IMPORTANT: Restart Claude Code to use the new skills!"
 echo ""

@@ -15,6 +15,19 @@ import { existsSync } from "fs";
 const WRAPPER_PATH = join(homedir(), ".claude", "bin", "codeagent-wrapper");
 const PROMPTS_DIR = join(homedir(), ".claude", "prompts");
 
+// Nano Banana Pro configuration
+const NANOBANANA_WRAPPER_PATH = join(homedir(), ".claude", "bin", "nanobanana-wrapper");
+const NANOBANANA_OUTPUT_DIR = join(homedir(), ".claude", "nanobanana-output");
+
+// Image generation styles
+const IMAGE_STYLES = ["photorealistic", "flat", "modern", "pixel-art", "minimal", "sketch", "watercolor", "3d-render"];
+
+// Image types for specific generation
+const IMAGE_TYPES = ["icon", "diagram", "flowchart", "pattern", "ui-mockup", "illustration", "logo", "banner"];
+
+// Diagram types
+const DIAGRAM_TYPES = ["flowchart", "architecture", "sequence", "er-diagram", "network", "mindmap", "uml"];
+
 // Timeout in milliseconds (5 minutes)
 const TIMEOUT_MS = 300000;
 
@@ -99,6 +112,86 @@ async function executeWrapper(backend, task, workdir, role) {
         resolve(stdout);
       } else {
         resolve(`Exit code: ${code}\n\nOutput:\n${stdout}\n\nErrors:\n${stderr}`);
+      }
+    });
+
+    proc.on("error", (err) => {
+      clearTimeout(timeout);
+      reject(err);
+    });
+  });
+}
+
+/**
+ * Execute nanobanana-wrapper for image generation
+ */
+async function executeNanoBanana(command, prompt, options = {}) {
+  return new Promise((resolve, reject) => {
+    // Check if wrapper exists
+    if (!existsSync(NANOBANANA_WRAPPER_PATH)) {
+      reject(new Error(`nanobanana-wrapper not found at ${NANOBANANA_WRAPPER_PATH}. Please install it first.`));
+      return;
+    }
+
+    // Ensure output directory exists
+    const outputDir = options.outputDir || NANOBANANA_OUTPUT_DIR;
+
+    // Build command arguments
+    const args = [command, prompt];
+
+    if (options.style) {
+      args.push(options.style);
+    }
+
+    if (options.imagePath) {
+      args.push(options.imagePath);
+    }
+
+    // Set environment variables
+    const env = {
+      ...process.env,
+      NANOBANANA_OUTPUT_DIR: outputDir,
+    };
+
+    // Spawn the process
+    const proc = spawn(NANOBANANA_WRAPPER_PATH, args, {
+      stdio: ["pipe", "pipe", "pipe"],
+      env,
+      timeout: TIMEOUT_MS,
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    // Set timeout
+    const timeout = setTimeout(() => {
+      proc.kill("SIGTERM");
+      reject(new Error(`Image generation timed out after ${TIMEOUT_MS / 1000} seconds`));
+    }, TIMEOUT_MS);
+
+    proc.on("close", (code) => {
+      clearTimeout(timeout);
+      if (code === 0) {
+        resolve({
+          success: true,
+          outputPath: stdout.trim(),
+          message: `Image generated successfully: ${stdout.trim()}`,
+          notes: stderr.trim() || null,
+        });
+      } else {
+        resolve({
+          success: false,
+          error: stderr || `Process exited with code ${code}`,
+          stdout,
+        });
       }
     });
 
@@ -232,6 +325,136 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           required: ["task"],
         },
       },
+      // Image Generation Tools (Nano Banana Pro via Vertex AI)
+      {
+        name: "generate_image",
+        description: "Generate an image using Nano Banana Pro (Gemini) via Vertex AI. Creates images from text prompts with various styles. Best for icons, diagrams, UI mockups, patterns, logos, and illustrations. Requires GCP_PROJECT_ID environment variable.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            prompt: {
+              type: "string",
+              description: "Detailed description of the image to generate",
+            },
+            style: {
+              type: "string",
+              enum: IMAGE_STYLES,
+              description: "Visual style for the image (default: modern)",
+            },
+            type: {
+              type: "string",
+              enum: IMAGE_TYPES,
+              description: "Type of image to generate (optional, helps optimize the prompt)",
+            },
+            outputDir: {
+              type: "string",
+              description: "Output directory for generated images (default: ~/.claude/nanobanana-output)",
+            },
+          },
+          required: ["prompt"],
+        },
+      },
+      {
+        name: "edit_image",
+        description: "Edit an existing image using Nano Banana Pro (Gemini) via Vertex AI. Modifies images based on text instructions. Requires GCP_PROJECT_ID environment variable.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            imagePath: {
+              type: "string",
+              description: "Absolute path to the image file to edit",
+            },
+            prompt: {
+              type: "string",
+              description: "Instructions for how to edit the image",
+            },
+            style: {
+              type: "string",
+              enum: IMAGE_STYLES,
+              description: "Visual style for the edited image (default: modern)",
+            },
+            outputDir: {
+              type: "string",
+              description: "Output directory for edited images (default: ~/.claude/nanobanana-output)",
+            },
+          },
+          required: ["imagePath", "prompt"],
+        },
+      },
+      {
+        name: "generate_icon",
+        description: "Generate an app icon or UI element using Nano Banana Pro. Optimized for icon generation with proper sizing and recognizable design. Requires GCP_PROJECT_ID environment variable.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            prompt: {
+              type: "string",
+              description: "Description of the icon to generate",
+            },
+            style: {
+              type: "string",
+              enum: ["flat", "modern", "minimal", "skeuomorphic", "outline", "3d"],
+              description: "Icon style (default: modern)",
+            },
+            outputDir: {
+              type: "string",
+              description: "Output directory (default: ~/.claude/nanobanana-output)",
+            },
+          },
+          required: ["prompt"],
+        },
+      },
+      {
+        name: "generate_diagram",
+        description: "Generate a technical diagram or flowchart using Nano Banana Pro. Best for architecture diagrams, flowcharts, sequence diagrams, and technical illustrations. Requires GCP_PROJECT_ID environment variable.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            prompt: {
+              type: "string",
+              description: "Description of the diagram to generate",
+            },
+            type: {
+              type: "string",
+              enum: DIAGRAM_TYPES,
+              description: "Type of diagram (default: flowchart)",
+            },
+            outputDir: {
+              type: "string",
+              description: "Output directory (default: ~/.claude/nanobanana-output)",
+            },
+          },
+          required: ["prompt"],
+        },
+      },
+      {
+        name: "generate_ui_mockup",
+        description: "Generate a UI mockup or wireframe using Nano Banana Pro. Creates visual mockups for web pages, mobile apps, and user interfaces. Requires GCP_PROJECT_ID environment variable.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            prompt: {
+              type: "string",
+              description: "Description of the UI mockup to generate",
+            },
+            platform: {
+              type: "string",
+              enum: ["web", "mobile", "desktop", "tablet"],
+              description: "Target platform (default: web)",
+            },
+            style: {
+              type: "string",
+              enum: ["wireframe", "low-fidelity", "high-fidelity", "minimal"],
+              description: "Mockup style (default: high-fidelity)",
+            },
+            outputDir: {
+              type: "string",
+              description: "Output directory (default: ~/.claude/nanobanana-output)",
+            },
+          },
+          required: ["prompt"],
+        },
+      },
     ],
   };
 });
@@ -316,6 +539,141 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             },
           ],
         };
+      }
+
+      // Image Generation Tool Handlers
+      case "generate_image": {
+        const style = args.style || "modern";
+        let enhancedPrompt = args.prompt;
+
+        // Enhance prompt based on type if specified
+        if (args.type) {
+          enhancedPrompt = `Create a ${args.type}: ${args.prompt}`;
+        }
+
+        const result = await executeNanoBanana("generate", enhancedPrompt, {
+          style,
+          outputDir: args.outputDir,
+        });
+
+        if (result.success) {
+          let responseText = `## Image Generated Successfully\n\n**File:** \`${result.outputPath}\`\n**Style:** ${style}`;
+          if (args.type) {
+            responseText += `\n**Type:** ${args.type}`;
+          }
+          if (result.notes) {
+            responseText += `\n\n**Notes:** ${result.notes}`;
+          }
+          return {
+            content: [{ type: "text", text: responseText }],
+          };
+        } else {
+          return {
+            content: [{ type: "text", text: `## Image Generation Failed\n\n**Error:** ${result.error}` }],
+            isError: true,
+          };
+        }
+      }
+
+      case "edit_image": {
+        const style = args.style || "modern";
+
+        const result = await executeNanoBanana("edit", args.prompt, {
+          style,
+          imagePath: args.imagePath,
+          outputDir: args.outputDir,
+        });
+
+        if (result.success) {
+          let responseText = `## Image Edited Successfully\n\n**Original:** \`${args.imagePath}\`\n**Edited:** \`${result.outputPath}\``;
+          if (result.notes) {
+            responseText += `\n\n**Notes:** ${result.notes}`;
+          }
+          return {
+            content: [{ type: "text", text: responseText }],
+          };
+        } else {
+          return {
+            content: [{ type: "text", text: `## Image Editing Failed\n\n**Error:** ${result.error}` }],
+            isError: true,
+          };
+        }
+      }
+
+      case "generate_icon": {
+        const style = args.style || "modern";
+        const enhancedPrompt = `Create an app icon: ${args.prompt}. The icon should be simple, recognizable, and work well at small sizes (16x16 to 512x512). Style: ${style}. Use appropriate background (transparent or solid color).`;
+
+        const result = await executeNanoBanana("generate", enhancedPrompt, {
+          style,
+          outputDir: args.outputDir,
+        });
+
+        if (result.success) {
+          let responseText = `## Icon Generated Successfully\n\n**File:** \`${result.outputPath}\`\n**Style:** ${style}`;
+          if (result.notes) {
+            responseText += `\n\n**Notes:** ${result.notes}`;
+          }
+          return {
+            content: [{ type: "text", text: responseText }],
+          };
+        } else {
+          return {
+            content: [{ type: "text", text: `## Icon Generation Failed\n\n**Error:** ${result.error}` }],
+            isError: true,
+          };
+        }
+      }
+
+      case "generate_diagram": {
+        const diagramType = args.type || "flowchart";
+        const enhancedPrompt = `Create a professional ${diagramType} diagram: ${args.prompt}. The diagram should be clear, well-organized, and easy to understand. Use appropriate shapes, arrows, and labels. Style: clean and modern with good contrast.`;
+
+        const result = await executeNanoBanana("generate", enhancedPrompt, {
+          style: "modern",
+          outputDir: args.outputDir,
+        });
+
+        if (result.success) {
+          let responseText = `## Diagram Generated Successfully\n\n**Type:** ${diagramType}\n**File:** \`${result.outputPath}\``;
+          if (result.notes) {
+            responseText += `\n\n**Notes:** ${result.notes}`;
+          }
+          return {
+            content: [{ type: "text", text: responseText }],
+          };
+        } else {
+          return {
+            content: [{ type: "text", text: `## Diagram Generation Failed\n\n**Error:** ${result.error}` }],
+            isError: true,
+          };
+        }
+      }
+
+      case "generate_ui_mockup": {
+        const platform = args.platform || "web";
+        const style = args.style || "high-fidelity";
+        const enhancedPrompt = `Create a ${style} UI mockup for ${platform}: ${args.prompt}. The mockup should show realistic UI elements, proper spacing, and modern design patterns. Include appropriate navigation, buttons, forms, and content areas.`;
+
+        const result = await executeNanoBanana("generate", enhancedPrompt, {
+          style: "modern",
+          outputDir: args.outputDir,
+        });
+
+        if (result.success) {
+          let responseText = `## UI Mockup Generated Successfully\n\n**Platform:** ${platform}\n**Fidelity:** ${style}\n**File:** \`${result.outputPath}\``;
+          if (result.notes) {
+            responseText += `\n\n**Notes:** ${result.notes}`;
+          }
+          return {
+            content: [{ type: "text", text: responseText }],
+          };
+        } else {
+          return {
+            content: [{ type: "text", text: `## UI Mockup Generation Failed\n\n**Error:** ${result.error}` }],
+            isError: true,
+          };
+        }
       }
 
       default:

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "nanobanana": {
+      "command": "uvx",
+      "args": ["nanobanana-mcp-server@latest"],
+      "env": {
+        "NANOBANANA_AUTH_METHOD": "vertex_ai",
+        "GCP_PROJECT_ID": "${GCP_PROJECT_ID}",
+        "GCP_REGION": "us-central1"
+      }
+    }
+  }
+}

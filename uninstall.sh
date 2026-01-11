@@ -19,7 +19,7 @@ if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
 fi
 
 echo ""
-echo "[1/3] Removing skills..."
+echo "[1/5] Removing skills..."
 rm -rf "$SKILLS_DIR/ccg-routing"
 rm -rf "$SKILLS_DIR/ccg-workflow"
 rm -rf "$SKILLS_DIR/ccg-analyze"
@@ -31,12 +31,20 @@ rm -rf "$SKILLS_DIR/ccg-commit"
 rm -rf "$SKILLS_DIR/ccg-feat"
 rm -rf "$SKILLS_DIR/ccg-frontend"
 rm -rf "$SKILLS_DIR/ccg-backend"
+rm -rf "$SKILLS_DIR/ccg-image"
 
-echo "[2/3] Removing MCP server..."
+echo "[2/5] Removing MCP server..."
 rm -rf "$MCP_DIR"
 
-echo "[3/3] Removing prompts..."
+echo "[3/5] Removing prompts..."
 rm -rf "$PROMPTS_DIR"
+
+echo "[4/5] Removing binary wrappers..."
+rm -f "$CLAUDE_DIR/bin/codeagent-wrapper"
+rm -f "$CLAUDE_DIR/bin/nanobanana-wrapper"
+
+echo "[5/5] Removing nanobanana output directory..."
+rm -rf "$CLAUDE_DIR/nanobanana-output"
 
 echo ""
 echo "=========================================="
