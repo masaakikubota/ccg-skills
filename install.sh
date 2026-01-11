@@ -71,11 +71,13 @@ else
 fi
 
 # Install dependencies for MCP server
+ORIG_DIR="$(pwd)"
 cd "$MCP_DIR"
 if [ -f "package.json" ]; then
     echo "    Installing npm dependencies..."
     npm install --silent 2>/dev/null || npm install 2>&1 | tail -3
 fi
+cd "$ORIG_DIR"
 
 # Install binary wrappers
 echo "[4/6] Installing binary wrappers..."
