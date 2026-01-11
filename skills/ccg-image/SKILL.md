@@ -3,6 +3,21 @@
 Generate images using Nano Banana Pro (Gemini) via Vertex AI ADC authentication.
 This skill enables autonomous image generation for web development, UI design, and documentation.
 
+## IMPORTANT: MCP Server Configuration
+
+**This skill requires the `ccg` MCP server.** When calling image generation tools, use:
+
+- `mcp__ccg__generate_image` - General image generation
+- `mcp__ccg__generate_icon` - Icon generation
+- `mcp__ccg__generate_diagram` - Diagram generation
+- `mcp__ccg__generate_ui_mockup` - UI mockup generation
+- `mcp__ccg__edit_image` - Image editing
+
+If MCP tools are not available, use the nanobanana-wrapper CLI directly:
+```bash
+~/.claude/bin/nanobanana-wrapper generate "<prompt>"
+```
+
 ## Prerequisites
 
 Before using this skill, ensure:
@@ -315,10 +330,10 @@ echo $GCP_PROJECT_ID
 
 ### Model Errors
 ```bash
-# Check available models
-export NANOBANANA_MODEL="gemini-2.0-flash-exp"
-# or for higher quality
-export NANOBANANA_MODEL="gemini-2.0-pro-exp"
+# Default (high quality, uses global endpoint)
+export NANOBANANA_MODEL="gemini-3-pro-image-preview"
+# or for faster generation (uses regional endpoint)
+export NANOBANANA_MODEL="gemini-2.5-flash-image"
 ```
 
 ### Output Directory Issues
